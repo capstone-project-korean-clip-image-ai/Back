@@ -10,7 +10,7 @@ source venv/bin/activate
 <br>
 <br>
 
-pip install -r requirements.txt
+pip install -r requirements.txt<br>
 pip install fastapi uvicorn
 
 uvicorn main:app --reload --host 127.0.0.1 --port 8000
