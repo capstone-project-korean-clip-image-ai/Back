@@ -7,9 +7,25 @@ import torch
 import uuid
 import os
 
+# 모델 해제 함수
+def unload_model(pipe):
+    try:
+        pipe.to("cpu")
+        del pipe
+        torch.cuda.empty_cache()
+        print("모델 메모리 해제 완료")
+    except Exception as e:
+        print(f"모델 메모리 해제 중 오류 발생: {e}")
+
 def generate_image(request: GenerateRequest):
+    # 사전에 모델이 로드 되어있는 경우 해제
+    if 'pipe' in globals():
+        print("기존 모델 해제 중...")
+        unload_model(pipe)
+
+
     # 모델 확인
-    model_path = MODEL_PATHS.get(request.model)
+    model_path = MODEL_PATHS.get("txt2img", {}).get(request.model)
     lora_path = LORA_PATHS.get(request.lora)
 
     # 모델 설정
@@ -58,4 +74,7 @@ def generate_image(request: GenerateRequest):
     
     print(image_path)
 
-    return FileResponse(image_path, media_type="image/jpg")
+    # 생성 후 모델 해제
+    unload_model(pipe)
+
+    return FileResponse(image_path, media_type="image/jpeg")

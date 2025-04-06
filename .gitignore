@@ -9,3 +9,5 @@ venv/
 # 기타
 *.log
 .DS_Store
+*.pth
+*.pth.*
