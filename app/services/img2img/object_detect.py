@@ -37,7 +37,7 @@ sam.to(DEVICE)
 predictor = SamPredictor(sam)
 print("SAM 모델 로드 완료")
 
-async def object_detect_process(file: UploadFile):
+async def object_detect_process(file: UploadFile, x: int, y: int):
     # 이미지 파일 저장 경로 설정
     file_path = UPLOAD_DIR / file.filename
     print(f"파일 저장 경로: {file_path}")
@@ -53,17 +53,13 @@ async def object_detect_process(file: UploadFile):
         # SAM 모델로 객체 탐지
         predictor.set_image(image_np)
 
-        # 중심점 기준으로 전경 감지
-        image_height, image_width, _ = image_np.shape
-        center_x = image_width // 2
-        center_y = image_height // 2
-
+        # 클릭된 위치를 중심으로 전경 감지
         input_points = np.array([
-            [center_x, center_y],
-            [center_x - image_width // 4, center_y],
-            [center_x + image_width // 4, center_y],
-            [center_x, center_y - image_height // 4],
-            [center_x, center_y + image_height // 4]
+            [x, y],  # 사용자가 클릭한 좌표
+            [x - 30, y],
+            [x + 30, y],
+            [x, y - 30],
+            [x, y + 30]
         ])
         input_labels = np.array([1, 1, 1, 1, 1])
 
