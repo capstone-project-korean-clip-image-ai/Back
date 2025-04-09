@@ -1,10 +1,8 @@
 from fastapi.responses import FileResponse
 from pathlib import Path
 
-async def get_obj_dect_img_process(image_path: str):
+async def detected_image(image_path: str):
     try:
-        # 이미지 경로 처리
-        image_path.replace('%2F', '/')
         full_path = Path(image_path)
 
         # 파일 존재 여부 확인

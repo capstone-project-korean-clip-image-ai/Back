@@ -6,8 +6,7 @@ router = APIRouter()
 
 @router.post("")
 async def txt2img(request: GenerateRequest):
-    image_path = generate_image(request)
-    return image_path
+    return generate_image(request)
 
 @router.get("")
 async def ignore_get_generate():
