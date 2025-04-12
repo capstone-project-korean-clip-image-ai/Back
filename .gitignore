@@ -11,3 +11,9 @@ venv/
 .DS_Store
 *.pth
 *.pth.*
+.env
+
+uploaded_images/*
+!uploaded_images/.gitkeep
+
+archive/*
