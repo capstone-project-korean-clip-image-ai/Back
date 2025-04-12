@@ -31,16 +31,17 @@ def unload_model(model):
 sam_checkpoint = "sam_vit_l_0b3195.pth"
 sam_model_type = "vit_l"
 
-print("SAM 모델 로드 중...")
-sam = sam_model_registry[sam_model_type](checkpoint=sam_checkpoint)
-sam.to(DEVICE)
-predictor = SamPredictor(sam)
-print("SAM 모델 로드 완료")
-
 async def object_detect_process(file: UploadFile, x: int, y: int):
     # 이미지 파일 저장 경로 설정
     file_path = UPLOAD_DIR / file.filename
     print(f"파일 저장 경로: {file_path}")
+
+    print("SAM 모델 로드 중...")
+    sam = sam_model_registry[sam_model_type](checkpoint=sam_checkpoint)
+    sam.to(DEVICE)
+    predictor = SamPredictor(sam)
+    print("SAM 모델 로드 완료")
+
     try:
         # 이미지 저장
         with open(file_path, "wb") as buffer:
