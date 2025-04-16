@@ -3,6 +3,7 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 import torch
+import cv2
 import numpy as np
 from segment_anything import SamPredictor, sam_model_registry
 from PIL import Image
@@ -26,6 +27,13 @@ def unload_model(model):
         print("모델 메모리 해제 완료")
     except Exception as e:
         print(f"모델 메모리 해제 중 오류 발생: {e}")
+
+# 마스킹 영역을 확장하는 함수 (cv2 : dilated)
+def expand_mask(mask: np.ndarray, kernel_size) -> np.ndarray:
+    mask_uint8 = (mask * 255).astype("uint8")
+    kernel = np.ones((kernel_size, kernel_size), np.uint8)
+    dilated = cv2.dilate(mask_uint8, kernel, iterations=1)
+    return (dilated > 127).astype("uint8")  # 다시 binary mask
 
 # 전역 변수로 SAM 모델 캐싱
 sam_checkpoint = "sam_vit_l_0b3195.pth"
@@ -74,7 +82,8 @@ async def object_detect_process(file: UploadFile, x: int, y: int):
         object_paths = []
 
         for i, mask in enumerate(masks):
-            mask_image = Image.fromarray((mask * 255).astype("uint8"))
+            expanded_mask = expand_mask(mask, 25)
+            mask_image = Image.fromarray((expanded_mask * 255).astype("uint8"))
             object_path = UPLOAD_DIR / f"{remove_extension(file.filename)}_object_{i+1}.jpg"
             print(f"생성된 객체 경로: {object_path}")
             mask_image.save(object_path)
