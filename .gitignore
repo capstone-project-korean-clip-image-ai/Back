@@ -13,7 +13,6 @@ venv/
 *.pth.*
 .env
 
-uploaded_images/*
-!uploaded_images/.gitkeep
+uploaded_images
 
 archive/*
