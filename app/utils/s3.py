@@ -22,7 +22,6 @@ def upload_image_to_s3(image, folder: str):
         ContentType="image/jpeg"
     )
 
-    # presigned URL 생성
     cf_url = f"{CLOUDFRONT_DOMAIN}/{s3_key}"
 
     return s3_key, cf_url
