@@ -30,12 +30,10 @@ async def erasing_object(
     session: AsyncSession = Depends(get_session), 
     user = Depends(get_current_user),
 ):
-    # Inpainting, key/url 반환
     resp = await erase_object(image, object)
     content = json.loads(resp.body.decode())
     items = content.get("results", [])
 
-    # 요청 메타 저장
     gen = GenerationRequest(
         user_id=user.id,
         generation_type="inpainting",
@@ -46,7 +44,6 @@ async def erasing_object(
     await session.commit()
     await session.refresh(gen)
 
-    # 생성된 inpaint 이미지 저장
     for idx, item in enumerate(items):
         img = GeneratedImage(
             request_id=gen.id,
@@ -57,24 +54,20 @@ async def erasing_object(
         session.add(img)
     await session.commit()
 
-    # 원본 JSONResponse 반환
     return resp
 
 @router.post("/redraw_object")
 async def redraw_object(
-    # metadata를 한 번에 묶어서 받는다
     request: GenerateRequest = Depends(GenerateRequest.as_form_json),
     image: UploadFile = File(...),
     mask: UploadFile = File(...),
     session: AsyncSession = Depends(get_session),
     user = Depends(get_current_user),
 ):
-    # Inpainting, key/url 반환
     resp = redraw_image(request, image, mask)
     content = json.loads(resp.body.decode())
     items = content.get("results", [])
 
-    # 요청 메타 저장
     gen = GenerationRequest(
         user_id=user.id,
         generation_type="inpainting",
@@ -92,7 +85,6 @@ async def redraw_object(
     await session.commit()
     await session.refresh(gen)
 
-    # 생성된 inpaint 이미지 저장
     for idx, item in enumerate(items):
         img = GeneratedImage(
             request_id=gen.id,
