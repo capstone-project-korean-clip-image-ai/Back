@@ -16,7 +16,6 @@ app.include_router(txt2img.router, prefix="/txt2img")
 app.include_router(inpaint.router, prefix="/inpaint")
 app.include_router(img2img.router, prefix="/img2img")
 app.include_router(logs.router, prefix="/logs")
-# app.include_router(health_check.router, prefix="/health")
 
 @app.get("/")
 async def root():
