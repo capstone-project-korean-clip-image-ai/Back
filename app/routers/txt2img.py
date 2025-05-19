@@ -58,7 +58,6 @@ async def txt2img(
         session.add(img)
     await session.commit()
 
-    # 5) 원래 응답 리턴
     return response
 
 @router.get("")
