@@ -17,6 +17,6 @@ class GenerateRequest(BaseModel):
 
     @classmethod
     def as_form_json(cls, data: str = Form(...)):
-        # data에는 JSON.stringify(params)가 들어옵니다.
+        # data : JSON.stringify(params)
         return cls(**json.loads(data))
 
