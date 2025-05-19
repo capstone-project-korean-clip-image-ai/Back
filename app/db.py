@@ -16,7 +16,7 @@ engine = create_async_engine(DATABASE_URL, echo=False, future=True)
 async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 async def init_db():
-    from app.models.db_models import SQLModel  # 나중에 정의할 모델 메타데이터
+    from app.models.db_models import SQLModel
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
 
