@@ -1,16 +1,17 @@
-from app.config import MODEL_PATHS, LORA_PATHS, DEVICE
+from app.config import MODEL_PATHS, LORA_PATHS, DEVICE, BUCKET_NAME
 from app.models.request_models import GenerateRequest
 from app.utils.s3 import upload_image_to_s3
-from diffusers import DiffusionPipeline, DPMSolverMultistepScheduler
+from fastapi import APIRouter, UploadFile, File
+from diffusers import StableDiffusionControlNetPipeline, DPMSolverMultistepScheduler, LMSDiscreteScheduler, EulerDiscreteScheduler, ControlNetModel, UniPCMultistepScheduler
 from transformers import CLIPTextModel, CLIPTokenizer
+from controlnet_aux import OpenposeDetector
 from fastapi.responses import JSONResponse
+from PIL import Image
 import torch
 import boto3
 
-# S3 설정
 s3 = boto3.client("s3")
 
-# 모델 해제 함수
 def unload_model(pipe):
     try:
         pipe.to("cpu")
@@ -20,22 +21,28 @@ def unload_model(pipe):
     except Exception as e:
         print(f"모델 메모리 해제 중 오류 발생: {e}")
 
-# 메인 이미지 생성 함수
-def generate_image(request: GenerateRequest):
+def pose_copy(
+        request: GenerateRequest,
+        image: UploadFile = File(...),
+):
+    print("pose_copy request:", request.dict()) 
+    # 모델, LoRA 경로 설정
     if request.model not in MODEL_PATHS.get("txt2img", {}):
-        print(f"지원하지 않는 모델: {request.model}")
         return JSONResponse(content={"error": "지원하지 않는 모델입니다."}, status_code=400)
     model_path = MODEL_PATHS.get("txt2img", {}).get(request.model)
 
-    if request.lora not in LORA_PATHS:
-        print(f"지원하지 않는 LoRA: {request.lora}")
+    if request.lora and request.lora not in LORA_PATHS:
         return JSONResponse(content={"error": "지원하지 않는 LoRA입니다."}, status_code=400)
     lora_path = LORA_PATHS.get(request.lora)
-    # 파이프라인 로딩
-    pipe = DiffusionPipeline.from_pretrained(
-        model_path,
-        torch_dtype=torch.float32,
-        safety_checker=None
+
+    # ControlNet(OpenPose) 모델 로드
+    controlnet = ControlNetModel.from_pretrained(
+        "lllyasviel/control_v11p_sd15_openpose", torch_dtype=torch.float32
+    )
+
+    # Stable Diffusion + ControlNet 파이프라인 로드
+    pipe = StableDiffusionControlNetPipeline.from_pretrained(
+        model_path, controlnet=controlnet, torch_dtype=torch.float32
     )
 
     # 한국어 CLIP 적용
@@ -43,19 +50,29 @@ def generate_image(request: GenerateRequest):
     pipe.text_encoder = CLIPTextModel.from_pretrained(koCLIP, torch_dtype=torch.float32)
     pipe.tokenizer = CLIPTokenizer.from_pretrained(koCLIP)
 
+    # LoRA 적용
     if lora_path is not None:
         pipe.unet.load_attn_procs(lora_path)
 
+    # 스케줄러 설정
     pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
     pipe.scheduler.use_karras_sigmas = True
     pipe.to(DEVICE)
 
-    images = pipe(
+    # OpenPose Detector 로드
+    pose_detector = OpenposeDetector.from_pretrained("lllyasviel/ControlNet")
+
+    # UploadFile → PIL.Image
+    input_img = Image.open(image.file).convert("RGB")
+    skeleton =  pose_detector(input_img)
+
+    images= pipe(
         prompt=request.prompt,
         negative_prompt=request.negative_prompt,
+        image=skeleton,
         num_inference_steps=request.inference_steps,
-        height=request.height,
-        width=request.width,
+        height=input_img.height,
+        width=input_img.width,
         guidance_scale=request.guidance_scale,
         clip_skip=request.clip_skip,
         num_images_per_prompt=request.imgNum,
@@ -64,7 +81,7 @@ def generate_image(request: GenerateRequest):
     items = []
 
     for image in images:
-        s3_key, url = upload_image_to_s3(image, folder="generated_images")
+        s3_key, url = upload_image_to_s3(image, folder="img2img")
         items.append({"key": s3_key, "url": url})
 
     unload_model(pipe)

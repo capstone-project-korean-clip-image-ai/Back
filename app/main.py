@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import txt2img
-from app.routers import img2img
+from app.routers import logs, txt2img, img2img, inpaint
 
 app = FastAPI()
 
@@ -14,8 +13,9 @@ app.add_middleware(
 )
 
 app.include_router(txt2img.router, prefix="/txt2img")
+app.include_router(inpaint.router, prefix="/inpaint")
 app.include_router(img2img.router, prefix="/img2img")
-# app.include_router(health_check.router, prefix="/health")
+app.include_router(logs.router, prefix="/logs")
 
 @app.get("/")
 async def root():

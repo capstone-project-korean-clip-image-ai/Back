@@ -1,9 +1,11 @@
 import boto3
+from app.config import BUCKET_NAME, CLOUDFRONT_DOMAIN
 from io import BytesIO
 import uuid
 
-def upload_image_to_s3(image, bucket_name: str, folder: str):
+def upload_image_to_s3(image, folder: str):
     s3 = boto3.client("s3")
+    bucket_name = BUCKET_NAME
 
     buffer = BytesIO()
     image.save(buffer, format="JPEG")
@@ -20,11 +22,6 @@ def upload_image_to_s3(image, bucket_name: str, folder: str):
         ContentType="image/jpeg"
     )
 
-    # presigned URL 생성
-    url = s3.generate_presigned_url(
-        ClientMethod="get_object",
-        Params={"Bucket": bucket_name, "Key": s3_key},
-        ExpiresIn=300  # 5분
-    )
+    cf_url = f"{CLOUDFRONT_DOMAIN}/{s3_key}"
 
-    return url
+    return s3_key, cf_url
