@@ -2,7 +2,8 @@ from app.config import MODEL_PATHS, LORA_PATHS, DEVICE, BUCKET_NAME
 from app.models.request_models import GenerateRequest
 from app.utils.s3 import upload_image_to_s3
 from fastapi import APIRouter, UploadFile, File
-from diffusers import StableDiffusionControlNetPipeline, DPMSolverMultistepScheduler, LMSDiscreteScheduler, EulerDiscreteScheduler, ControlNetModel, UniPCMultistepScheduler
+from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler
+from ip_adapter import IPAdapter
 from transformers import CLIPTextModel, CLIPTokenizer
 from controlnet_aux import OpenposeDetector
 from fastapi.responses import JSONResponse
@@ -21,11 +22,11 @@ def unload_model(pipe):
     except Exception as e:
         print(f"모델 메모리 해제 중 오류 발생: {e}")
 
-def pose_copy(
+def face_copy(
         request: GenerateRequest,
         image: UploadFile = File(...),
 ):
-    print("pose_copy request:", request.dict()) 
+    print("style_copy request:", request.dict()) 
     # 모델, LoRA 경로 설정
     if request.model not in MODEL_PATHS.get("txt2img", {}):
         return JSONResponse(content={"error": "지원하지 않는 모델입니다."}, status_code=400)
@@ -35,45 +36,43 @@ def pose_copy(
         return JSONResponse(content={"error": "지원하지 않는 LoRA입니다."}, status_code=400)
     lora_path = LORA_PATHS.get(request.lora)
 
-    # ControlNet(OpenPose) 모델 로드
-    controlnet = ControlNetModel.from_pretrained(
-        "lllyasviel/control_v11p_sd15_openpose", torch_dtype=torch.float32
+    pipe = StableDiffusionPipeline.from_pretrained(
+      model_path,
+      torch_dtype=torch.float16,
+      safety_checker=None
+    ).to("cuda")
+
+    pipe.load_ip_adapter(
+      "h94/IP-Adapter",
+      subfolder="models", 
+      weight_name="ip-adapter-full-face_sd15.bin"
     )
 
-    # Stable Diffusion + ControlNet 파이프라인 로드
-    pipe = StableDiffusionControlNetPipeline.from_pretrained(
-        model_path, controlnet=controlnet, torch_dtype=torch.float32, safety_checker=None
-    )
+    pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+    pipe.scheduler.use_karras_sigmas = True
+    pipe.set_ip_adapter_scale(0.5)
 
     # 한국어 CLIP 적용
     koCLIP = "Bingsu/clip-vit-large-patch14-ko"
-    pipe.text_encoder = CLIPTextModel.from_pretrained(koCLIP, torch_dtype=torch.float32)
+    pipe.text_encoder = CLIPTextModel.from_pretrained(koCLIP, torch_dtype=torch.float16)
     pipe.tokenizer = CLIPTokenizer.from_pretrained(koCLIP)
 
     # LoRA 적용
     if lora_path is not None:
         pipe.unet.load_attn_procs(lora_path)
 
-    # 스케줄러 설정
-    pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
-    pipe.scheduler.use_karras_sigmas = True
     pipe.to(DEVICE)
-
-    # OpenPose Detector 로드
-    pose_detector = OpenposeDetector.from_pretrained("lllyasviel/ControlNet")
-
+    
     # UploadFile → PIL.Image
     input_img = Image.open(image.file).convert("RGB")
-    skeleton =  pose_detector(input_img)
 
-    images= pipe(
+    images = pipe(
         prompt=request.prompt,
+        ip_adapter_image=input_img,
         negative_prompt=request.negative_prompt,
-        image=skeleton,
         num_inference_steps=request.inference_steps,
-        height=input_img.height,
-        width=input_img.width,
-        guidance_scale=request.guidance_scale,
+        width=request.width,
+        height=request.height,
         clip_skip=request.clip_skip,
         num_images_per_prompt=request.imgNum,
     ).images

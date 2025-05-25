@@ -43,7 +43,7 @@ def edge_copy(
 
     # Stable Diffusion + ControlNet 파이프라인 로드
     pipe = StableDiffusionControlNetPipeline.from_pretrained(
-        model_path, controlnet=controlnet, torch_dtype=torch.float32
+        model_path, controlnet=controlnet, torch_dtype=torch.float32, safety_checker=None
     )
 
     # 한국어 CLIP 적용

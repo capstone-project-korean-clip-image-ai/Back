@@ -16,9 +16,10 @@ CLOUDFRONT_DOMAIN = os.getenv("CLOUDFRONT_DOMAIN")
 # 모델 경로 설정
 MODEL_PATHS = {
     "txt2img": {
-        "base": "Bingsu/my-korean-stable-diffusion-v1-5",
+        "InsaneRealistic": "Yntec/insaneRealistic_v2",
         "DreamShaper": "Lykon/DreamShaper",
-        "toonyou": "frankjoshua/toonyou_beta6"
+        "ToonYou": "frankjoshua/toonyou_beta6",
+        "PastelMix": "JamesFlare/pastel-mix",
     },
     "inpaint": {
         "base": "runwayml/stable-diffusion-inpainting",
@@ -30,7 +31,7 @@ MODEL_PATHS = {
 LORA_PATHS = {
     "none": None,
     "hanbok": "daeunn/hanbok-LoRA",
-    "hanok": "parrel777/hanok-LoRA-ver1",
+    "hanok": "Junforjune/hanok-lora-v2",
 }
 
 DEVICE = "cuda"

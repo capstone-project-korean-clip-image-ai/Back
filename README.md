@@ -13,7 +13,7 @@ source venv/bin/activate
 pip install -r requirements.txt<br>
 pip install fastapi uvicorn
 
-uvicorn main:app --reload --host 127.0.0.1 --port 8000
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 ```
 Back

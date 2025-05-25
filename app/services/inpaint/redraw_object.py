@@ -35,6 +35,7 @@ def redraw_image(
         image: UploadFile = File(...), 
         mask: UploadFile = File(...),
 ):
+    print("redraw_image request:", request.dict())
     # 모델, LoRA 경로 설정
     if request.model not in MODEL_PATHS.get("inpaint", {}):
         return JSONResponse(content={"error": "지원하지 않는 모델입니다."}, status_code=400)
