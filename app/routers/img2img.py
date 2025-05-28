@@ -1,5 +1,5 @@
 from app.models.request_models import GenerateRequest
-from fastapi import APIRouter, UploadFile, File, Depends
+from fastapi import APIRouter, UploadFile, File, Depends, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.responses import JSONResponse
 import json
@@ -10,6 +10,7 @@ from app.models.db_models import GenerationRequest, GeneratedImage
 from app.services.img2img.edge_copy import edge_copy
 from app.services.img2img.pose_copy import pose_copy
 from app.services.img2img.style_copy import style_copy
+from app.services.img2img.filter_copy import filter_copy
 
 router = APIRouter()
 
@@ -21,12 +22,11 @@ async def save_generation_results(
     session: AsyncSession,
     user_id: int
 ) -> list:
-    """DB에 생성 요청 및 결과 저장"""
     # 응답 파싱
     content = json.loads(response.body.decode())
     items = content.get("results", [])
     
-    # 1. 생성 요청 저장
+    # 생성 요청 저장
     gen = GenerationRequest(
         user_id=user_id,
         generation_type="img2img",
@@ -44,7 +44,7 @@ async def save_generation_results(
     await session.commit()
     await session.refresh(gen)
     
-    # 2. 생성된 이미지 저장
+    # 생성된 이미지 저장
     for idx, item in enumerate(items):
         img = GeneratedImage(
             request_id=gen.id,
@@ -57,7 +57,7 @@ async def save_generation_results(
     
     return items
 
-@router.post("/edge")
+@router.post("/edge") # 형태
 async def edge(
     request: GenerateRequest = Depends(GenerateRequest.as_form_json),
     image: UploadFile = File(...),
@@ -68,7 +68,7 @@ async def edge(
     await save_generation_results(resp, request, "edge", session, user.id)
     return resp
 
-@router.post("/pose")
+@router.post("/pose") # 포즈
 async def pose(
     request: GenerateRequest = Depends(GenerateRequest.as_form_json),
     image: UploadFile = File(...),
@@ -79,7 +79,7 @@ async def pose(
     await save_generation_results(resp, request, "pose", session, user.id)
     return resp
 
-@router.post("/style")
+@router.post("/style") # 화풍
 async def style(
     request: GenerateRequest = Depends(GenerateRequest.as_form_json),
     image: UploadFile = File(...),
@@ -90,13 +90,37 @@ async def style(
     await save_generation_results(resp, request, "style", session, user.id)
     return resp
 
-@router.post("/face")
-async def face(
-    request: GenerateRequest = Depends(GenerateRequest.as_form_json),
+@router.post("/filter") # 대상
+async def filter(
+    filter: str = Form(...),
+    imgNum: int = Form(...),
     image: UploadFile = File(...),
     session: AsyncSession = Depends(get_session),
     user = Depends(get_current_user),
 ):
-    resp = style_copy(request, image) 
-    await save_generation_results(resp, request, "face", session, user.id)
+    resp = filter_copy(filter, imgNum, image)
+    
+    content = json.loads(resp.body.decode())
+    items = content.get("results", [])
+
+    gen = GenerationRequest(
+        user_id=user.id,
+        generation_type="img2img",
+        sub_type="filter",
+        extra_params={},
+    )
+    session.add(gen)
+    await session.commit()
+    await session.refresh(gen)
+
+    for idx, item in enumerate(items):
+        img = GeneratedImage(
+            request_id=gen.id,
+            index=idx,
+            s3_key=item["key"],
+            s3_url=item["url"],
+        )
+        session.add(img)
+    await session.commit()
+
     return resp
