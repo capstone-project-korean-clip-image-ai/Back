@@ -23,7 +23,7 @@ def unload_model(pipe):
     except Exception as e:
         print(f"모델 메모리 해제 중 오류 발생: {e}")
 
-def disney_filter(imgNum: int, image: Image.Image) -> Image.Image:
+def disney_filter(imgNum: int, image: Image.Image) -> List[Dict[str, Any]]:
     model_id = "Yntec/DisneyPixarCartoon768"
 
     pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
@@ -68,7 +68,7 @@ def disney_filter(imgNum: int, image: Image.Image) -> Image.Image:
 
     return items
 
-def ghibli_filter(imgNum:int, image: Image.Image) -> Image.Image:
+def ghibli_filter(imgNum:int, image: Image.Image) -> List[Dict[str, Any]]:
     base_model = "nitrosocke/Ghibli-Diffusion"
 
     controlnet = ControlNetModel.from_pretrained(
