@@ -1,4 +1,4 @@
-from app.config import MODEL_PATHS, LORA_PATHS, DEVICE, BUCKET_NAME
+from app.config import MODEL_PATHS, LORA_PATHS, DEVICE
 from app.models.request_models import GenerateRequest
 from app.utils.s3 import upload_image_to_s3
 from fastapi import APIRouter, UploadFile, File
@@ -36,7 +36,7 @@ def edge_copy(
         return JSONResponse(content={"error": "지원하지 않는 LoRA입니다."}, status_code=400)
     lora_path = LORA_PATHS.get(request.lora)
 
-    # ControlNet(OpenPose) 모델 로드
+    # ControlNet(Canny) 모델 로드
     controlnet = ControlNetModel.from_pretrained(
         "lllyasviel/control_v11p_sd15_canny", torch_dtype=torch.float32
     )

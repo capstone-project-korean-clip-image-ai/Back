@@ -5,7 +5,6 @@ from fastapi import APIRouter, UploadFile, File
 from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler
 from ip_adapter import IPAdapter
 from transformers import CLIPTextModel, CLIPTokenizer
-from controlnet_aux import OpenposeDetector
 from fastapi.responses import JSONResponse
 from PIL import Image
 import torch
