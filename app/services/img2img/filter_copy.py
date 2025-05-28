@@ -79,12 +79,6 @@ def ghibli_filter(imgNum:int, image: Image.Image) -> List[Dict[str, Any]]:
         base_model, controlnet=controlnet, torch_dtype=torch.float16, safety_checker=None
     )
 
-    pipe.load_ip_adapter(
-      "h94/IP-Adapter",
-      subfolder="models", 
-      weight_name="ip-adapter-plus_sd15.bin"
-    )
-
     pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
     pipe.scheduler.use_karras_sigmas = True
     pipe.set_ip_adapter_scale(0.8)
