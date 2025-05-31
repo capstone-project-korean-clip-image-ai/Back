@@ -1,6 +1,7 @@
 from app.config import MODEL_PATHS, LORA_PATHS, DEVICE
 from app.models.request_models import GenerateRequest
 from app.utils.s3 import upload_image_to_s3
+from app.utils.prompt_optimizer import enhance_prompt
 from fastapi import APIRouter, UploadFile, File
 from diffusers import StableDiffusionControlNetPipeline, DPMSolverMultistepScheduler, LMSDiscreteScheduler, EulerDiscreteScheduler, ControlNetModel, UniPCMultistepScheduler
 from transformers import CLIPTextModel, CLIPTokenizer
@@ -9,6 +10,7 @@ from fastapi.responses import JSONResponse
 from PIL import Image
 import numpy as np
 import cv2
+import gc
 import torch
 import boto3
 
@@ -18,7 +20,10 @@ def unload_model(pipe):
     try:
         pipe.to("cpu")
         del pipe
+
+        gc.collect()
         torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
         print("모델 메모리 해제 완료")
     except Exception as e:
         print(f"모델 메모리 해제 중 오류 발생: {e}")
@@ -38,7 +43,7 @@ def edge_copy(
 
     # ControlNet(Canny) 모델 로드
     controlnet = ControlNetModel.from_pretrained(
-        "lllyasviel/control_v11p_sd15_canny", torch_dtype=torch.float32
+        "lllyasviel/control_v11p_sd15_canny", torch_dtype=torch.float32, safety_checker=None
     )
 
     # Stable Diffusion + ControlNet 파이프라인 로드
@@ -60,6 +65,12 @@ def edge_copy(
     pipe.scheduler.use_karras_sigmas = True
     pipe.to(DEVICE)
 
+    optimized_prompt, optimized_negative, _ = enhance_prompt(
+        request.prompt,
+        request.negative_prompt,
+        request.lora
+    )
+
     temp_img = Image.open(image.file).convert("RGB")
     img_np = np.array(temp_img)
     gray_np = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
@@ -67,8 +78,8 @@ def edge_copy(
     edges_pil = Image.fromarray(edges).convert("RGB")
 
     images= pipe(
-        prompt=request.prompt,
-        negative_prompt=request.negative_prompt,
+        prompt=optimized_prompt,
+        negative_prompt=optimized_negative,
         image=edges_pil,
         num_inference_steps=request.inference_steps,
         height=temp_img.height,

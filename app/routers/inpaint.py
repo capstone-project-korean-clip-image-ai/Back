@@ -2,6 +2,7 @@ from app.models.request_models import GenerateRequest
 from fastapi import APIRouter, UploadFile, File, Depends, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 import json
+from PIL import Image
 
 from app.db import get_session
 from app.auth import get_current_user
@@ -9,6 +10,7 @@ from app.models.db_models import GenerationRequest, GeneratedImage
 from app.services.inpaint.object_detect import object_detect_process
 from app.services.inpaint.erase_object import erase_object
 from app.services.inpaint.redraw_object import redraw_image
+from app.utils.s3 import upload_image_to_s3
 
 router = APIRouter()
 
@@ -31,6 +33,10 @@ async def erasing_object(
     user = Depends(get_current_user),
 ):
     resp = await erase_object(image, object)
+    # 원본 이미지 S3 업로드
+    img = Image.open(image.file).convert("RGB")
+    input_key, input_url = upload_image_to_s3(img, folder="input_images")
+
     content = json.loads(resp.body.decode())
     items = content.get("results", [])
 
@@ -39,6 +45,8 @@ async def erasing_object(
         generation_type="inpainting",
         sub_type="erase",
         extra_params={},
+        input_image_s3_key=input_key,
+        input_image_s3_url=input_url,
     )
     session.add(gen)
     await session.commit()
@@ -65,6 +73,10 @@ async def redraw_object(
     user = Depends(get_current_user),
 ):
     resp = redraw_image(request, image, mask)
+
+    img = Image.open(image.file).convert("RGB")
+    input_key, input_url = upload_image_to_s3(img, folder="input_images")
+
     content = json.loads(resp.body.decode())
     items = content.get("results", [])
 
@@ -80,6 +92,8 @@ async def redraw_object(
         clip_skip=request.clip_skip,
         sub_type="redraw",
         extra_params={},
+        input_image_s3_key=input_key,
+        input_image_s3_url=input_url,
     )
     session.add(gen)
     await session.commit()

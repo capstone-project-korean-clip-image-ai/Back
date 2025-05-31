@@ -22,7 +22,6 @@ MODEL_PATHS = {
         "PastelMix": "JamesFlare/pastel-mix",
     },
     "inpaint": {
-        "base": "runwayml/stable-diffusion-inpainting",
         "DreamShaper": "Lykon/dreamshaper-8-inpainting",
     },
 }
@@ -32,6 +31,7 @@ LORA_PATHS = {
     "none": None,
     "hanbok": "daeunn/hanbok-LoRA",
     "hanok": "Junforjune/hanok-lora-v2",
+    "hansik": "jjaehyeok2/kfood_final",
 }
 
 DEVICE = "cuda"

@@ -1,6 +1,7 @@
 from app.config import MODEL_PATHS, LORA_PATHS, DEVICE, BUCKET_NAME
 from app.models.request_models import GenerateRequest
 from app.utils.s3 import upload_image_to_s3
+from app.utils.prompt_optimizer import enhance_prompt
 from fastapi import APIRouter, UploadFile, File
 from diffusers import StableDiffusionControlNetPipeline, DPMSolverMultistepScheduler, LMSDiscreteScheduler, EulerDiscreteScheduler, ControlNetModel, UniPCMultistepScheduler
 from transformers import CLIPTextModel, CLIPTokenizer
@@ -9,6 +10,7 @@ from fastapi.responses import JSONResponse
 from PIL import Image
 import torch
 import boto3
+import gc
 
 s3 = boto3.client("s3")
 
@@ -16,7 +18,11 @@ def unload_model(pipe):
     try:
         pipe.to("cpu")
         del pipe
+        
+        gc.collect()
         torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+
         print("모델 메모리 해제 완료")
     except Exception as e:
         print(f"모델 메모리 해제 중 오류 발생: {e}")
@@ -37,7 +43,7 @@ def pose_copy(
 
     # ControlNet(OpenPose) 모델 로드
     controlnet = ControlNetModel.from_pretrained(
-        "lllyasviel/control_v11p_sd15_openpose", torch_dtype=torch.float32
+        "lllyasviel/control_v11p_sd15_openpose", torch_dtype=torch.float32, safety_checker=None
     )
 
     # Stable Diffusion + ControlNet 파이프라인 로드
@@ -65,6 +71,12 @@ def pose_copy(
     # UploadFile → PIL.Image
     input_img = Image.open(image.file).convert("RGB")
     skeleton =  pose_detector(input_img)
+
+    optimized_prompt, optimized_negative, _ = enhance_prompt(
+        request.prompt,
+        request.negative_prompt,
+        request.lora
+    )
 
     images= pipe(
         prompt=request.prompt,

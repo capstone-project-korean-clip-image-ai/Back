@@ -1,14 +1,20 @@
 from datetime import datetime
 from typing import Any, Dict, Optional, List
 from uuid import uuid4
+import pytz
 
 from dotenv import load_dotenv
 from sqlalchemy import Column
 from sqlmodel import SQLModel, Field, Relationship, JSON
 
-load_dotenv()  # .env의 DATABASE_URL 등 불러오기
 from app.models.db_models import SQLModel
+
+load_dotenv()  # .env의 DATABASE_URL 등 불러오기
+KST = pytz.timezone("Asia/Seoul")
 target_metadata = SQLModel.metadata
+
+def now_kst():
+    return datetime.now(KST)
 
 class GenerationRequest(SQLModel, table=True):
     id: Optional[str] = Field(default_factory=lambda: str(uuid4()), primary_key=True)
@@ -37,7 +43,7 @@ class GenerationRequest(SQLModel, table=True):
         sa_column=Column(JSON),      # JSON 컬럼으로 지정
         default_factory=dict         # 기본값을 빈 dict 로
     )
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=now_kst)
 
     images: List["GeneratedImage"] = Relationship(back_populates="request")
 

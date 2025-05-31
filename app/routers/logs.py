@@ -37,6 +37,7 @@ async def list_logs(
             "clipSkip": g.clip_skip,
             "width": g.width,
             "height": g.height,
+            "originalImage": g.input_image_s3_url,
             "createdAt": g.created_at.isoformat(),
             "images": [{"url": i.s3_url, "key": i.s3_key} for i in imgs]
         })

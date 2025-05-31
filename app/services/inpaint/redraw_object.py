@@ -1,6 +1,7 @@
 from app.config import MODEL_PATHS, LORA_PATHS, DEVICE
 from app.models.request_models import GenerateRequest
 from app.utils.s3 import upload_image_to_s3
+from app.utils.prompt_optimizer import enhance_prompt
 from fastapi import APIRouter, UploadFile, File
 from diffusers import StableDiffusionInpaintPipeline, DPMSolverMultistepScheduler, LMSDiscreteScheduler, EulerDiscreteScheduler
 from transformers import CLIPTextModel, CLIPTokenizer
@@ -8,6 +9,7 @@ from fastapi.responses import JSONResponse
 from PIL import Image
 import torch
 import boto3
+import gc
 
 router = APIRouter()
 s3 = boto3.client("s3")
@@ -24,7 +26,10 @@ def unload_model(pipe):
     try:
         pipe.to("cpu")
         del pipe
+        
+        gc.collect()
         torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
         print("모델 메모리 해제 완료")
     except Exception as e:
         print(f"모델 메모리 해제 중 오류 발생: {e}")
@@ -78,12 +83,18 @@ def redraw_image(
     pipe.scheduler.use_karras_sigmas = True
     pipe.to(DEVICE)
 
+    optimized_prompt, optimized_negative, _ = enhance_prompt(
+        request.prompt,
+        request.negative_prompt,
+        request.lora
+    )
+
     # 한 번에 이미지 4장 생성
     images = pipe(
-        prompt=request.prompt,
+        prompt=optimized_prompt,
         image=input_img,
         mask_image=mask_img,
-        negative_prompt=request.negative_prompt,
+        negative_prompt=optimized_negative,
         num_inference_steps=request.inference_steps,
         guidance_scale=request.guidance_scale,
         clip_skip=request.clip_skip,

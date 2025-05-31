@@ -1,11 +1,13 @@
 from app.config import MODEL_PATHS, LORA_PATHS, DEVICE
 from app.models.request_models import GenerateRequest
 from app.utils.s3 import upload_image_to_s3
+from app.utils.prompt_optimizer import enhance_prompt
 from diffusers import DiffusionPipeline, DPMSolverMultistepScheduler
 from transformers import CLIPTextModel, CLIPTokenizer
 from fastapi.responses import JSONResponse
 import torch
 import boto3
+import gc
 
 # S3 설정
 s3 = boto3.client("s3")
@@ -15,7 +17,10 @@ def unload_model(pipe):
     try:
         pipe.to("cpu")
         del pipe
+        
+        gc.collect()
         torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
         print("모델 메모리 해제 완료")
     except Exception as e:
         print(f"모델 메모리 해제 중 오류 발생: {e}")
@@ -50,9 +55,15 @@ def generate_image(request: GenerateRequest):
     pipe.scheduler.use_karras_sigmas = True
     pipe.to(DEVICE)
 
+    optimized_prompt, optimized_negative, _ = enhance_prompt(
+        request.prompt,
+        request.negative_prompt,
+        request.lora
+    )
+
     images = pipe(
-        prompt=request.prompt,
-        negative_prompt=request.negative_prompt,
+        prompt=optimized_prompt,
+        negative_prompt=optimized_negative,
         num_inference_steps=request.inference_steps,
         height=request.height,
         width=request.width,
