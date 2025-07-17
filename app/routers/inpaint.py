@@ -44,7 +44,6 @@ async def erasing_object(
         user_id=user.id,
         generation_type="inpainting",
         sub_type="erase",
-        extra_params={},
         input_image_s3_key=input_key,
         input_image_s3_url=input_url,
     )
@@ -85,13 +84,12 @@ async def redraw_object(
         generation_type="inpainting",
         prompt=request.prompt,
         model_name=request.model,
-        lora=request.lora,
+        lora=",".join(request.loras or []),
         negative_prompt=request.negative_prompt,
         inference_steps=request.inference_steps,
         guidance_scale=request.guidance_scale,
         clip_skip=request.clip_skip,
         sub_type="redraw",
-        extra_params={},
         input_image_s3_key=input_key,
         input_image_s3_url=input_url,
     )

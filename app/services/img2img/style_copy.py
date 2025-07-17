@@ -36,9 +36,12 @@ def style_copy(
         return JSONResponse(content={"error": "지원하지 않는 모델입니다."}, status_code=400)
     model_path = MODEL_PATHS.get("txt2img", {}).get(request.model)
 
-    if request.lora and request.lora not in LORA_PATHS:
-        return JSONResponse(content={"error": "지원하지 않는 LoRA입니다."}, status_code=400)
-    lora_path = LORA_PATHS.get(request.lora)
+    # 다중 LoRA 검증 및 경로 조회
+    loras = request.loras or []
+    invalid = [l for l in loras if l not in LORA_PATHS]
+    if invalid:
+        return JSONResponse(content={"error": f"지원하지 않는 LoRA입니다: {invalid}"}, status_code=400)
+    lora_paths = [LORA_PATHS[l] for l in loras]
 
     pipe = StableDiffusionPipeline.from_pretrained(
       model_path,
@@ -61,19 +64,20 @@ def style_copy(
     pipe.text_encoder = CLIPTextModel.from_pretrained(koCLIP, torch_dtype=torch.float16)
     pipe.tokenizer = CLIPTokenizer.from_pretrained(koCLIP)
 
-    # LoRA 적용
-    if lora_path is not None:
-        pipe.unet.load_attn_procs(lora_path)
+    # LoRA 적용 (여러 LoRA 지원)
+    for lp in lora_paths:
+        pipe.unet.load_attn_procs(lp)
 
     pipe.to(DEVICE)
     
     # UploadFile → PIL.Image
     input_img = Image.open(image.file).convert("RGB")
 
+    # 프롬프트 최적화 (다중 LoRA 전달)
     optimized_prompt, optimized_negative, _ = enhance_prompt(
         request.prompt,
         request.negative_prompt,
-        request.lora
+        loras
     )
 
     images = pipe(

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel
 from fastapi import Form
 import json
@@ -6,7 +6,7 @@ import json
 class GenerateRequest(BaseModel):
     prompt: Optional[str] = None
     model: Optional[str] = None
-    lora: Optional[str] = None
+    loras: Optional[List[str]] = None
     imgNum: Optional[int] = None
     width: Optional[int] = None
     height: Optional[int] = None

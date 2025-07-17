@@ -3,7 +3,7 @@ from fastapi import APIRouter, UploadFile, File, Depends, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.responses import JSONResponse
 import json
-from PIL import Image  # 추가: 원본 이미지 업로드용
+from PIL import Image
 
 from app.db import get_session
 from app.auth import get_current_user
@@ -36,7 +36,7 @@ async def save_generation_results(
         generation_type="img2img",
         prompt=request.prompt,
         model_name=request.model,
-        lora=request.lora,
+        lora=",".join(request.loras or []),
         negative_prompt=request.negative_prompt,
         inference_steps=request.inference_steps,
         guidance_scale=request.guidance_scale,
@@ -70,7 +70,7 @@ async def edge(
     image: UploadFile = File(...),
     session: AsyncSession = Depends(get_session),
     user = Depends(get_current_user),
-):    
+):
     # 원본 이미지 S3 업로드
     img = Image.open(image.file).convert("RGB")
     input_key, input_url = upload_image_to_s3(img, folder="input_images")
@@ -113,7 +113,6 @@ async def filter(
     session: AsyncSession = Depends(get_session),
     user = Depends(get_current_user),
 ):
-    # 원본 이미지 S3 업로드
     img = Image.open(image.file).convert("RGB")
     input_key, input_url = upload_image_to_s3(img, folder="input_images")
     resp = filter_copy(filter, imgNum, image)

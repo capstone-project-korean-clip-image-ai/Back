@@ -30,7 +30,7 @@ async def list_logs(
             "subType": g.sub_type,
             "prompt": g.prompt,
             "model": g.model_name,
-            "lora": g.lora,
+            "loras": g.lora.split(",") if g.lora else [],
             "negativePrompt": g.negative_prompt,
             "inferenceSteps": g.inference_steps,
             "guidanceScale": g.guidance_scale,

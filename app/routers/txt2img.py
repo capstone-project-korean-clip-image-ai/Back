@@ -32,7 +32,7 @@ async def txt2img(
         sub_type=None,
         prompt=request.prompt,
         model_name=request.model,
-        lora=request.lora,
+        lora=",".join(request.loras or []),
         negative_prompt=request.negative_prompt,
         inference_steps=request.inference_steps,
         guidance_scale=request.guidance_scale,
